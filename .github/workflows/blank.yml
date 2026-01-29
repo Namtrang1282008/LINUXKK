@@ -1,0 +1,56 @@
+name: REAL-GIGABIT-VPS-PRO
+on: workflow_dispatch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. Toi uu he thong va Mang (Max Performance)
+        run: |
+          # Bat thuat toan BBR va tang gioi han file system
+          sudo sysctl -w net.core.default_qdisc=fq
+          sudo sysctl -w net.ipv4.tcp_congestion_control=bbr
+          sudo sysctl -w net.core.rmem_max=16777216
+          sudo sysctl -w net.core.wmem_max=16777216
+          ulimit -n 65535
+
+      - name: 2. Kiem tra va Cai dat Tailscale
+        run: |
+          if [ -z "${{ secrets.TAILSCALE_AUTHKEY }}" ]; then
+            echo "❌ LOI: Ban chua nhap TAILSCALE_AUTHKEY vao Settings/Secrets!"
+            exit 1
+          fi
+          curl -fsSL https://tailscale.com/install.sh | sh > /dev/null 2>&1
+          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTHKEY }} --accept-dns=false --hostname=GitHub-VPS-Khung
+
+      - name: 3. Cai dat SSH va Cong cu quan ly
+        run: |
+          sudo apt update -y > /dev/null 2>&1
+          sudo apt install -y openssh-server htop nload aria2 jq > /dev/null 2>&1
+          # Mat khau: vps999
+          echo "runner:vps999" | sudo chpasswd
+          sudo service ssh start
+
+      - name: 4. Kiem tra Bang thong va In thong tin dang nhap
+        run: |
+          # Lay IP Tailscale
+          IP_ADDR=$(tailscale ip -4)
+          
+          echo -e "\n\033[1;34m======================================================"
+          echo -e "          🛡️  VPS LINUX KET NOI THANH CONG"
+          echo -e "======================================================\033[0m"
+          echo -e "\033[1;32m  📍 HOST (IP) : $IP_ADDR"
+          echo -e "  👤 USERNAME  : runner"
+          echo -e "  🔑 PASSWORD  : vps999"
+          echo -e "  🚪 PORT      : 22"
+          echo -e "======================================================"
+          echo -e "  ⚡ BANG THONG: ~1-5 Gbps (Gigabit)"
+          echo -e "  ⏳ THOI GIAN : Con 6 tieng de su dung"
+          echo -e "======================================================\033[0m"
+          echo -e "\033[1;33m  Copy IP nay va dán vao app Termius tren dien thoai!\033[0m\n"
+
+      - name: 5. Giu VPS luon song (Keep Alive)
+        run: |
+          echo "VPS dang chay... Dung tat tab nay neu ban muon theo doi log."
+          # Lenh nay giup may khong bi sleep
+          sleep 21600
